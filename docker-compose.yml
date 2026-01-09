@@ -1,0 +1,56 @@
+services:
+
+  postgres-db:
+    image: postgres:15
+    container_name: postgres-db
+    environment:
+      POSTGRES_DB: userdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - user_postgres_data:/var/lib/postgresql/data
+
+  auth-postgres:
+    image: postgres:15
+    container_name: auth-postgres
+    environment:
+      POSTGRES_DB: authdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - auth_postgres_data:/var/lib/postgresql/data
+
+  service-user:
+    build:
+      context: ./service-user/user-server
+      dockerfile: Dockerfile
+    container_name: user-server
+    depends_on:
+      - postgres-db
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/userdb
+
+  service-auth:
+    build:
+      context: ./service-auth/auth-server
+      dockerfile: Dockerfile
+    container_name: auth-server
+    depends_on:
+      - auth-postgres
+      - service-user
+    ports:
+      - "8081:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://auth-postgres:5432/authdb
+      USER_SERVICE_URL: http://user-server:8080
+
+volumes:
+  user_postgres_data:
+  auth_postgres_data:
+
